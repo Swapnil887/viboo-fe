@@ -3,8 +3,11 @@ import Link from "next/link";
 
 const fetchResources = async (resources: String) => {
   try {
+    console.log(`${process.env.BACKEND_URL}/api/${resources}`);
     const resourceDataResponse = await fetch(
-      `${process.env.BACKEND_URL}/api/${resources}`,
+      resources == "product-varient"
+        ? `${process.env.BACKEND_URL}/api/products/variant`
+        : `${process.env.BACKEND_URL}/api/${resources}`,
     );
     const resourceData = resourceDataResponse
       ? await resourceDataResponse?.json()
@@ -45,7 +48,10 @@ export default async function page({
 
       {/* Render generic data table for this specific resource */}
 
-      <ResourcesLandingPage resourceData={fetchResoDataurces?.data || []} />
+      <ResourcesLandingPage
+        resources={resources}
+        resourceData={fetchResoDataurces?.data || []}
+      />
     </div>
   );
 }

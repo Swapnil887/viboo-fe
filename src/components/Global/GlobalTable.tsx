@@ -9,11 +9,16 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Plus,
+  Pencil,
+  Trash2,
   Search,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import {
@@ -25,37 +30,41 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// ----------------------------------
-// Types
-// ----------------------------------
+// ==========================================
+// TYPES
+// ==========================================
 
 export interface GlobalTableColumn<T> {
   key: string;
   header: string;
 
-  // Object property used to retrieve the value
-  accessorKey?: keyof T;
+  // Supports normal and nested properties
+  accessorKey?: keyof T | string;
 
-  // Custom value accessor
-  accessorFn?: (row: T) => any;
+  // Custom accessor
+  accessorFn?: (row: T) => unknown;
 
-  // Custom cell rendering
-  cell?: (row: T, value: any) => React.ReactNode;
+  // Custom cell renderer
+  cell?: (row: T, value: unknown) => React.ReactNode;
 
   sortable?: boolean;
   searchable?: boolean;
 
+  align?: "left" | "center" | "right";
+
+  width?: string;
   className?: string;
   headerClassName?: string;
-
-  align?: "left" | "center" | "right";
 }
 
 export interface GlobalTableProps<T> {
-  columns: GlobalTableColumn<T>[];
   data: T[];
+  columns: GlobalTableColumn<T>[];
+
+  getRowId?: (row: T) => string;
 
   loading?: boolean;
+  loadingRows?: number;
 
   title?: string;
   description?: string;
@@ -68,39 +77,56 @@ export interface GlobalTableProps<T> {
   pageSizeOptions?: number[];
 
   emptyMessage?: string;
-
-  // Custom toolbar content
-  toolbar?: React.ReactNode;
-
-  // Custom content when no records exist
   emptyContent?: React.ReactNode;
 
-  // Row actions
-  actions?: (row: T) => React.ReactNode;
-  actionsHeader?: string;
+  addButton?: {
+    label: string;
+    onClick: () => void;
+  };
 
-  // Row click
+  toolbar?: React.ReactNode;
+
+  selectable?: boolean;
+  onSelectionChange?: (selectedRows: T[]) => void;
+
   onRowClick?: (row: T) => void;
 
-  // Unique row identifier
-  getRowId?: (row: T, index: number) => string;
+  actions?: (row: T) => React.ReactNode;
 
-  // Optional styling
+  onEdit?: (row: T) => void;
+  onDelete?: (row: T) => void;
+
+  actionsHeader?: string;
+
   className?: string;
   tableClassName?: string;
-
-  // Loading rows
-  loadingRows?: number;
 }
 
-// ----------------------------------
-// Global Table
-// ----------------------------------
+// ==========================================
+// HELPER
+// ==========================================
 
-export function GlobalTable<T>({
-  columns,
+// Get nested object properties.
+// Example: getNestedValue(row, "brand.name")
+
+function getNestedValue(obj: unknown, path: string): unknown {
+  return path.split(".").reduce((current: any, key) => {
+    return current?.[key];
+  }, obj);
+}
+
+// ==========================================
+// COMPONENT
+// ==========================================
+
+export function GlobalTable<T extends object>({
   data,
+  columns,
+
+  getRowId,
+
   loading = false,
+  loadingRows = 5,
 
   title,
   description,
@@ -113,48 +139,65 @@ export function GlobalTable<T>({
   pageSizeOptions = [5, 10, 20, 50],
 
   emptyMessage = "No records found.",
-
-  toolbar,
   emptyContent,
 
-  actions,
-  actionsHeader = "Actions",
+  addButton,
+  toolbar,
+
+  selectable = false,
+  onSelectionChange,
 
   onRowClick,
-  getRowId,
+
+  actions,
+  onEdit,
+  onDelete,
+
+  actionsHeader = "Actions",
 
   className = "",
   tableClassName = "",
-  loadingRows = 5,
 }: GlobalTableProps<T>) {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
 
-  // ----------------------------------
-  // Get cell value
-  // ----------------------------------
+  // ========================================
+  // ROW ID
+  // ========================================
+
+  const getId = (row: T, index: number) => {
+    if (getRowId) return getRowId(row);
+
+    const id = (row as Record<string, unknown>).id;
+
+    return id != null ? String(id) : String(index);
+  };
+
+  // ========================================
+  // GET COLUMN VALUE
+  // ========================================
 
   const getValue = (row: T, column: GlobalTableColumn<T>) => {
     if (column.accessorFn) {
       return column.accessorFn(row);
     }
 
-    if (column.accessorKey) {
-      return row[column.accessorKey];
-    }
+    const key = column.accessorKey ?? column.key;
 
-    return undefined;
+    return getNestedValue(row, String(key));
   };
 
-  // ----------------------------------
-  // Search
-  // ----------------------------------
+  // ========================================
+  // SEARCH
+  // ========================================
 
   const filteredData = useMemo(() => {
     if (!search.trim()) return data;
@@ -167,20 +210,19 @@ export function GlobalTable<T>({
 
         const value = getValue(row, column);
 
-        if (value === null || value === undefined) return false;
+        if (value == null) return false;
 
-        if (typeof value === "object") {
-          return JSON.stringify(value).toLowerCase().includes(query);
-        }
+        const searchableValue =
+          typeof value === "object" ? JSON.stringify(value) : String(value);
 
-        return String(value).toLowerCase().includes(query);
+        return searchableValue.toLowerCase().includes(query);
       }),
     );
   }, [data, columns, search]);
 
-  // ----------------------------------
-  // Sorting
-  // ----------------------------------
+  // ========================================
+  // SORTING
+  // ========================================
 
   const sortedData = useMemo(() => {
     if (!sortConfig) return filteredData;
@@ -193,6 +235,7 @@ export function GlobalTable<T>({
       const aValue = getValue(a, column);
       const bValue = getValue(b, column);
 
+      // Keep null values at the bottom
       if (aValue == null) return 1;
       if (bValue == null) return -1;
 
@@ -211,9 +254,9 @@ export function GlobalTable<T>({
     });
   }, [filteredData, sortConfig, columns]);
 
-  // ----------------------------------
-  // Pagination
-  // ----------------------------------
+  // ========================================
+  // PAGINATION
+  // ========================================
 
   const totalRecords = sortedData.length;
 
@@ -228,6 +271,10 @@ export function GlobalTable<T>({
 
     return sortedData.slice(startIndex, startIndex + currentPageSize);
   }, [sortedData, pagination, safePage, currentPageSize]);
+
+  // ========================================
+  // SORT HANDLER
+  // ========================================
 
   const handleSort = (column: GlobalTableColumn<T>) => {
     if (column.sortable === false) return;
@@ -249,6 +296,49 @@ export function GlobalTable<T>({
     });
   };
 
+  // ========================================
+  // SELECTION
+  // ========================================
+
+  const toggleRow = (row: T, index: number, checked: boolean) => {
+    const id = getId(row, index);
+
+    setSelectedIds((previous) => {
+      const next = checked
+        ? [...new Set([...previous, id])]
+        : previous.filter((item) => item !== id);
+
+      const selectedRows = data.filter((item, i) =>
+        next.includes(getId(item, i)),
+      );
+
+      onSelectionChange?.(selectedRows);
+
+      return next;
+    });
+  };
+
+  const visibleIds = paginatedData.map((row) => getId(row, data.indexOf(row)));
+
+  const allSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+
+  const toggleAll = (checked: boolean) => {
+    const next = checked
+      ? [...new Set([...selectedIds, ...visibleIds])]
+      : selectedIds.filter((id) => !visibleIds.includes(id));
+
+    setSelectedIds(next);
+
+    onSelectionChange?.(
+      data.filter((row, index) => next.includes(getId(row, index))),
+    );
+  };
+
+  // ========================================
+  // SORT ICON
+  // ========================================
+
   const getSortIcon = (column: GlobalTableColumn<T>) => {
     if (sortConfig?.key !== column.key) {
       return <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />;
@@ -261,6 +351,10 @@ export function GlobalTable<T>({
     );
   };
 
+  // ========================================
+  // RECORD COUNTS
+  // ========================================
+
   const startRecord =
     totalRecords === 0
       ? 0
@@ -272,13 +366,14 @@ export function GlobalTable<T>({
     ? Math.min(safePage * currentPageSize, totalRecords)
     : totalRecords;
 
-  // ----------------------------------
-  // Render
-  // ----------------------------------
+  // ========================================
+  // RENDER
+  // ========================================
 
   return (
     <div className={`w-full space-y-4 ${className}`}>
-      {/* Header */}
+      {/* HEADER */}
+
       {(title || description) && (
         <div className="space-y-1">
           {title && <h2 className="text-xl font-semibold">{title}</h2>}
@@ -289,8 +384,9 @@ export function GlobalTable<T>({
         </div>
       )}
 
-      {/* Toolbar */}
-      {(searchable || toolbar) && (
+      {/* TOOLBAR */}
+
+      {(searchable || toolbar || addButton) && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {searchable && (
             <div className="relative w-full sm:max-w-sm">
@@ -308,39 +404,54 @@ export function GlobalTable<T>({
             </div>
           )}
 
-          {toolbar && (
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              {toolbar}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {toolbar}
+
+            {addButton && (
+              <Button onClick={addButton.onClick}>
+                <Plus className="mr-2 h-4 w-4" />
+                {addButton.label}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Table */}
+      {/* TABLE */}
+
       <div className="w-full overflow-x-auto rounded-md border">
         <Table className={tableClassName}>
-          {/* Table Header */}
           <TableHeader>
             <TableRow>
+              {selectable && (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(checked) => toggleAll(checked === true)}
+                  />
+                </TableHead>
+              )}
+
               {columns.map((column) => (
                 <TableHead
                   key={column.key}
-                  className={`${column.headerClassName || ""} ${
-                    column.align === "center"
-                      ? "text-center"
-                      : column.align === "right"
-                        ? "text-right"
-                        : ""
-                  }`}
+                  style={{ width: column.width }}
+                  className={`
+                    ${column.headerClassName || ""}
+                    ${column.align === "center" ? "text-center" : ""}
+                    ${column.align === "right" ? "text-right" : ""}
+                  `}
                 >
                   <button
                     type="button"
                     disabled={column.sortable === false}
                     onClick={() => handleSort(column)}
                     className={`inline-flex items-center gap-2 ${
-                      column.sortable === false
-                        ? "cursor-default"
-                        : "cursor-pointer"
+                      column.align === "right"
+                        ? "w-full justify-end"
+                        : column.align === "center"
+                          ? "w-full justify-center"
+                          : ""
                     }`}
                   >
                     {column.header}
@@ -350,25 +461,31 @@ export function GlobalTable<T>({
                 </TableHead>
               ))}
 
-              {actions && (
+              {(actions || onEdit || onDelete) && (
                 <TableHead className="text-right">{actionsHeader}</TableHead>
               )}
             </TableRow>
           </TableHeader>
 
-          {/* Table Body */}
           <TableBody>
-            {/* Loading */}
+            {/* LOADING */}
+
             {loading ? (
               Array.from({ length: loadingRows }).map((_, index) => (
                 <TableRow key={index}>
+                  {selectable && (
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                  )}
+
                   {columns.map((column) => (
                     <TableCell key={column.key}>
                       <Skeleton className="h-5 w-full max-w-[150px]" />
                     </TableCell>
                   ))}
 
-                  {actions && (
+                  {(actions || onEdit || onDelete) && (
                     <TableCell>
                       <Skeleton className="h-5 w-16 ml-auto" />
                     </TableCell>
@@ -376,54 +493,91 @@ export function GlobalTable<T>({
                 </TableRow>
               ))
             ) : paginatedData.length > 0 ? (
-              paginatedData.map((row, index) => (
-                <TableRow
-                  key={getRowId ? getRowId(row, index) : index}
-                  onClick={() => onRowClick?.(row)}
-                  className={
-                    onRowClick ? "cursor-pointer hover:bg-muted/50" : ""
-                  }
-                >
-                  {columns.map((column) => {
-                    const value = getValue(row, column);
+              paginatedData.map((row) => {
+                const originalIndex = data.indexOf(row);
+                const rowId = getId(row, originalIndex);
 
-                    return (
-                      <TableCell
-                        key={column.key}
-                        className={`${column.className || ""} ${
-                          column.align === "center"
-                            ? "text-center"
-                            : column.align === "right"
-                              ? "text-right"
-                              : ""
-                        }`}
-                      >
-                        {column.cell
-                          ? column.cell(row, value)
-                          : value == null
-                            ? "-"
-                            : String(value)}
+                return (
+                  <TableRow
+                    key={rowId}
+                    onClick={() => onRowClick?.(row)}
+                    className={
+                      onRowClick ? "cursor-pointer hover:bg-muted/50" : ""
+                    }
+                  >
+                    {selectable && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.includes(rowId)}
+                          onCheckedChange={(checked) =>
+                            toggleRow(row, originalIndex, checked === true)
+                          }
+                        />
                       </TableCell>
-                    );
-                  })}
+                    )}
 
-                  {actions && (
-                    <TableCell
-                      className="text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex justify-end items-center gap-2">
-                        {actions(row)}
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
+                    {columns.map((column) => {
+                      const value = getValue(row, column);
+
+                      return (
+                        <TableCell
+                          key={column.key}
+                          className={`
+                            ${column.className || ""}
+                            ${column.align === "center" ? "text-center" : ""}
+                            ${column.align === "right" ? "text-right" : ""}
+                          `}
+                        >
+                          {column.cell
+                            ? column.cell(row, value)
+                            : value == null
+                              ? "-"
+                              : String(value)}
+                        </TableCell>
+                      );
+                    })}
+
+                    {(actions || onEdit || onDelete) && (
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex justify-end items-center gap-2">
+                          {actions?.(row)}
+
+                          {onEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(row)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          {onDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDelete(row)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
             ) : (
-              /* Empty State */
               <TableRow>
                 <TableCell
-                  colSpan={columns.length + (actions ? 1 : 0)}
+                  colSpan={
+                    columns.length +
+                    (selectable ? 1 : 0) +
+                    (actions || onEdit || onDelete ? 1 : 0)
+                  }
                   className="h-32 text-center"
                 >
                   {emptyContent || (
@@ -441,7 +595,8 @@ export function GlobalTable<T>({
         </Table>
       </div>
 
-      {/* Pagination */}
+      {/* PAGINATION */}
+
       {pagination && !loading && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">

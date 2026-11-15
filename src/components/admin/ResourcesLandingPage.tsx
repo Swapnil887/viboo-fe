@@ -1,143 +1,327 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { GlobalTable, GlobalTableColumn } from "../Global/GlobalTable";
+import { GlobalTable } from "../Global/GlobalTable";
+import { useRouter } from "next/navigation";
 
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  stock: number;
-  status: string;
-  category: string;
-}
+export default function ResourcesLandingPage({ resources, resourceData }: any) {
+  const categories: any = resourceData;
+  const router = useRouter();
+  const columns =
+    resources == "category"
+      ? [
+          {
+            key: "name",
+            header: "Category",
+            sortable: true,
+          },
+          {
+            key: "slug",
+            header: "Slug",
+            sortable: true,
+          },
+          {
+            key: "description",
+            header: "Description",
+            sortable: false,
+          },
+          {
+            key: "sortOrder",
+            header: "Sort Order",
+            sortable: false,
+          },
+          {
+            key: "parentId",
+            header: "Parent Category",
+            sortable: false,
+            cell: (row: any) => (
+              <span>{row.parentId ? row.parentId : "Root Category"}</span>
+            ),
+          },
+          {
+            key: "isActive",
+            header: "Status",
+            cell: (row: any) => (
+              <Badge variant={row.isActive ? "default" : "secondary"}>
+                {row.isActive ? "Active" : "Inactive"}
+              </Badge>
+            ),
+          },
+          {
+            key: "createdAt",
+            header: "Created At",
+            sortable: true,
+            cell: (row: any) => new Date(row.createdAt).toLocaleDateString(),
+          },
+        ]
+      : resources == "brand"
+        ? [
+            {
+              key: "logoUrl",
+              header: "Logo",
+              sortable: false,
+              searchable: false,
+              cell: (row: any) =>
+                row.logoUrl ? (
+                  <img
+                    src={row.logoUrl}
+                    alt={row.name}
+                    className="h-10 w-10 rounded-md border object-contain"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground">N/A</span>
+                  </div>
+                ),
+            },
+            {
+              key: "name",
+              header: "Brand Name",
+              sortable: true,
+            },
+            {
+              key: "slug",
+              header: "Slug",
+              sortable: true,
+            },
+            {
+              key: "isActive",
+              header: "Status",
+              cell: (row: any) => (
+                <Badge variant={row.isActive ? "default" : "secondary"}>
+                  {row.isActive ? "Active" : "Inactive"}
+                </Badge>
+              ),
+            },
+            {
+              key: "createdAt",
+              header: "Created At",
+              sortable: true,
+              cell: (row: any) =>
+                new Date(row.createdAt).toLocaleDateString("en-IN"),
+            },
+          ]
+        : resources == "products"
+          ? [
+              {
+                key: "id",
+                header: "ProductId",
+                accessorKey: "id",
+                sortable: true,
+                searchable: true,
+                cell: (row: any) => (
+                  <div className="flex flex-col">
+                    <span className="font-medium">{row.id}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {row.slug}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: "name",
+                header: "Product",
+                accessorKey: "name",
+                sortable: true,
+                searchable: true,
+                cell: (row: any) => (
+                  <div className="flex flex-col">
+                    <span className="font-medium">{row.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {row.slug}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: "brand",
+                header: "Brand",
+                accessorFn: (row: any) => row.brand?.name ?? "—",
+                sortable: true,
+                searchable: true,
+                cell: (row: any) => row.brand?.name ?? "—",
+              },
+              {
+                key: "category",
+                header: "Category",
+                accessorFn: (row: any) =>
+                  row.categories
+                    .map((item: any) => item.category.name)
+                    .join(", "),
+                searchable: true,
+                cell: (row: any) => (
+                  <div className="flex flex-wrap gap-1">
+                    {row.categories.map((item: any) => (
+                      <Badge key={item.id} variant="outline">
+                        {item.category.name}
+                        {item.isPrimary && " (Primary)"}
+                      </Badge>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                key: "productType",
+                header: "Type",
+                accessorKey: "productType",
+                sortable: true,
+                cell: (row: any) => (
+                  <Badge variant="secondary">{row.productType}</Badge>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                accessorKey: "status",
+                sortable: true,
+                cell: (row: any) => (
+                  <Badge
+                    variant={row.status === "ACTIVE" ? "default" : "outline"}
+                  >
+                    {row.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: "isFeatured",
+                header: "Featured",
+                accessorKey: "isFeatured",
+                sortable: true,
+                cell: (row: any) => (
+                  <Badge variant={row.isFeatured ? "default" : "outline"}>
+                    {row.isFeatured ? "Featured" : "No"}
+                  </Badge>
+                ),
+              },
+              {
+                key: "createdAt",
+                header: "Created At",
+                accessorKey: "createdAt",
+                sortable: true,
+                cell: (row: any) =>
+                  new Date(row.createdAt).toLocaleDateString("en-IN"),
+              },
+            ]
+          : resources == "product-varient"
+            ? [
+                {
+                  key: "id",
+                  header: "id",
+                  accessorKey: "id",
+                  sortable: true,
+                  searchable: true,
+                  cell: (row: any) => (
+                    <div className="flex flex-col">
+                      <span className="font-medium">{row.id}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.slug}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "productId",
+                  header: "Product",
+                  accessorKey: "productId",
+                  sortable: true,
+                  searchable: true,
+                  cell: (row: any) => (
+                    <div className="flex flex-col">
+                      <span className="font-medium">{row.productId}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.slug}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "product",
+                  header: "product",
+                  accessorFn: (row: any) => row.product ?? "—",
+                  sortable: true,
+                  searchable: true,
+                  cell: (row: any) => row.product.name ?? "—",
+                },
+                {
+                  key: "sku",
+                  header: "sku",
+                  accessorFn: (row: any) => row.sku ?? "—",
+                  sortable: true,
+                  searchable: true,
+                  cell: (row: any) => row.sku ?? "—",
+                },
 
-const products: Product[] = [
-  {
-    id: "1",
-    name: "Boys Cotton T-Shirt",
-    sku: "VB-TS-001",
-    price: 499,
-    stock: 120,
-    status: "ACTIVE",
-    category: "T-Shirts",
-  },
-  {
-    id: "2",
-    name: "Girls Floral Dress",
-    sku: "VB-DR-002",
-    price: 899,
-    stock: 45,
-    status: "ACTIVE",
-    category: "Dresses",
-  },
-  {
-    id: "3",
-    name: "Kids Denim Jeans",
-    sku: "VB-JN-003",
-    price: 799,
-    stock: 0,
-    status: "DRAFT",
-    category: "Jeans",
-  },
-];
-
-export default function ResourcesLandingPage({ resourceData }: any) {
-  const columns: GlobalTableColumn<Product>[] = [
-    {
-      key: "name",
-      header: "Product",
-      accessorKey: "name",
-    },
-    {
-      key: "sku",
-      header: "SKU",
-      accessorKey: "sku",
-    },
-    {
-      key: "category",
-      header: "Category",
-      accessorKey: "category",
-    },
-    {
-      key: "price",
-      header: "Price",
-      accessorKey: "price",
-      cell: (_, value) => (
-        <span className="font-medium">₹{value.toLocaleString("en-IN")}</span>
-      ),
-    },
-    {
-      key: "stock",
-      header: "Stock",
-      accessorKey: "stock",
-      cell: (_, value) => (
-        <span className={value === 0 ? "text-red-500" : ""}>{value} units</span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      accessorKey: "status",
-      cell: (_, value) => (
-        <Badge variant={value === "ACTIVE" ? "default" : "secondary"}>
-          {value}
-        </Badge>
-      ),
-    },
-  ];
+                {
+                  key: "isActive",
+                  header: "isActive",
+                  accessorKey: "isActive",
+                  sortable: true,
+                  cell: (row: any) => (
+                    <Badge variant="secondary">
+                      {JSON.stringify(row.isActive)}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: "barcode",
+                  header: "barcode",
+                  accessorKey: "barcode",
+                  sortable: true,
+                  cell: (row: any) => (
+                    <Badge variant="secondary">{row.barcode}</Badge>
+                  ),
+                },
+                {
+                  key: "weight",
+                  header: "weight",
+                  accessorKey: "weight",
+                  sortable: true,
+                  cell: (row: any) => (
+                    <Badge variant="secondary">{row.weight}</Badge>
+                  ),
+                },
+                {
+                  key: "isActive",
+                  header: "isActive",
+                  accessorKey: "isActive",
+                  sortable: true,
+                  cell: (row: any) => (
+                    <Badge variant="secondary">{row.isActive}</Badge>
+                  ),
+                },
+                {
+                  key: "createdAt",
+                  header: "Created At",
+                  accessorKey: "createdAt",
+                  sortable: true,
+                  cell: (row: any) =>
+                    new Date(row.createdAt).toLocaleDateString("en-IN"),
+                },
+              ]
+            : [];
 
   return (
     <div className="p-6 space-y-6">
-      {resourceData?.map((ele: any, index: number) => (
-        <div key={index}>
-          {Object.entries(ele).map(([key, value]) => (
-            <p key={key}>
-              {key}: {JSON.stringify(value)}
-            </p>
-          ))}
-        </div>
-      ))}
-      {/* <GlobalTable
-        title="Products"
-        description="Manage your store products and inventory."
+      <GlobalTable
+        data={categories}
         columns={columns}
-        data={products}
+        getRowId={(row: any) => row.id}
+        title="Categories"
+        description="Manage your product categories."
         searchable
         pagination
         pageSize={10}
-        searchPlaceholder="Search products..."
-        getRowId={(row) => row.id}
-        toolbar={
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Product
-          </Button>
-        }
-        actions={(row) => (
-          <>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => console.log("Edit", row.id)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-red-500"
-              onClick={() => console.log("Delete", row.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </>
-        )}
-      /> */}
+        selectable
+        addButton={{
+          label: `Add ${resources}`,
+          onClick: () => router.push(`/admin/${resources}/create`),
+        }}
+        onRowClick={(row: any) => router.push(`/admin/${resources}/${row.id}`)}
+        onEdit={(row: any) => router.push(`/admin/${resources}/${row.id}/edit`)}
+        onDelete={(row: any) => {
+          console.log("Delete category:", row.id);
+        }}
+      />
     </div>
   );
 }
