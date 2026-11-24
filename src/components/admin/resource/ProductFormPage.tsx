@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import GLobalForm from "@/components/Global/GLobalForm";
-import { metadata } from "@/app/layout";
 
 export default function ProductFormPage({
   id,

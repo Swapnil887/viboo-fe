@@ -405,7 +405,7 @@ function GLobalForm({
         }));
 
         try {
-          const options = await field.fetchOptions(parentValue);
+          const options = await field.fetchOptions?.(parentValue);
 
           if (cancelled) return;
 
