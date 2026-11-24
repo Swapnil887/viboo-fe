@@ -5,13 +5,19 @@ const fetchResources = async (resources: String) => {
   try {
     console.log(`${process.env.BACKEND_URL}/api/${resources}`);
     const resourceDataResponse = await fetch(
-      resources == "product-varient"
+      resources == "product-variant"
         ? `${process.env.BACKEND_URL}/api/products/variant`
-        : `${process.env.BACKEND_URL}/api/${resources}`,
+        : resources == "attributes"
+          ? `${process.env.BACKEND_URL}/api/attributes`
+          : resources == "category"
+            ? `${process.env.BACKEND_URL}/api/category`
+            : `${process.env.BACKEND_URL}/api/${resources}`,
     );
     const resourceData = resourceDataResponse
       ? await resourceDataResponse?.json()
       : false;
+
+    console.log("resourceData", resourceData, "resourceData");
 
     if (resourceData && resourceData.success) {
       return resourceData;

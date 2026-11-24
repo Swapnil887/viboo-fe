@@ -4,7 +4,13 @@ import React, { useEffect, useState } from "react";
 import GLobalForm from "@/components/Global/GLobalForm";
 import { metadata } from "@/app/layout";
 
-export default function ProductFormPage({ id }: { id: any }) {
+export default function ProductFormPage({
+  id,
+  resourceData,
+}: {
+  id: any;
+  resourceData: any;
+}) {
   type SelectOption = {
     value: string;
     label: string;
@@ -99,6 +105,8 @@ export default function ProductFormPage({ id }: { id: any }) {
 
         const CategoryAttributeData = await fetchCategoryAttributeData.json();
 
+        console.log("CategoryAttributeData", CategoryAttributeData);
+
         const data = CategoryAttributeData.data.flatMap((ele: any) => {
           return ele.attribute.values.map((attributeValue: any) => ({
             value: attributeValue.id,
@@ -109,6 +117,14 @@ export default function ProductFormPage({ id }: { id: any }) {
 
         return data;
       },
+    },
+    {
+      field_name: "options",
+      field_label: "options",
+      input_type: "textarea",
+      required: false,
+      placeholder: "Select brand",
+      options: [],
     },
   ]);
 
@@ -200,52 +216,9 @@ export default function ProductFormPage({ id }: { id: any }) {
       // Convert string values into correct data types
       data.isFeatured = data.isFeatured === "true";
 
-      data.options = [
-        {
-          name: "Color",
-          slug: "color",
-          values: [
-            {
-              value: "Blue",
-              slug: "blue",
-              sortOrder: 0,
-            },
-            {
-              value: "Black",
-              slug: "black",
-              sortOrder: 1,
-            },
-            {
-              value: "Pink",
-              slug: "pink",
-              sortOrder: 2,
-            },
-          ],
-        },
-        {
-          name: "Size",
-          slug: "size",
-          values: [
-            {
-              value: "S",
-              slug: "s",
-              sortOrder: 0,
-            },
-            {
-              value: "M",
-              slug: "m",
-              sortOrder: 1,
-            },
-            {
-              value: "L",
-              slug: "l",
-              sortOrder: 2,
-            },
-          ],
-        },
-      ];
+      data.options = JSON.parse(data.options);
       console.log("data", data);
-      // return;
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products`,
         {

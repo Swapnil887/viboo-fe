@@ -3,7 +3,13 @@ import GLobalForm from "@/components/Global/GLobalForm";
 import React from "react"; // Update path as per your directory structure
 import { brandFormFields } from "../constants";
 
-export default function BrandForm() {
+export default function BrandForm({
+  id,
+  resourceData,
+}: {
+  id: any;
+  resourceData: any;
+}) {
   // Define mock handler for form submission
   const handleFormSubmit = async (formData: any) => {
     console.log(

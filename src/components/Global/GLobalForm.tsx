@@ -340,7 +340,7 @@ function GLobalForm({
     let cancelled = false;
 
     const fetchDependentOptions = async () => {
-      const dependentFields = baseFields.filter(
+      const dependentFields: any = baseFields.filter(
         (field: any) =>
           field.dependsOn && typeof field.fetchOptions === "function",
       );
