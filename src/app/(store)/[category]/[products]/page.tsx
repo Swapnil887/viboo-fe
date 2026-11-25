@@ -6,10 +6,12 @@ async function getProducts(): Promise<Product[]> {
     category: ["clothing"],
   };
 
+  console.log( `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/5b8bed60-3f74-491b-b36e-6a22ddadd3a6
+    `)
+
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/filter?filter=${encodeURIComponent(
-      JSON.stringify(filter),
-    )}`,
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/5b8bed60-3f74-491b-b36e-6a22ddadd3a6
+    `,
   );
 
   if (!response.ok) {
@@ -18,33 +20,23 @@ async function getProducts(): Promise<Product[]> {
 
   const data = await response.json();
 
-  return Array.isArray(data) ? data : data.products;
+  console.log(data,"here")
+
+  return data ;
 }
 
-async function getFilters(): Promise<ProductFilter[]> {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/category`,
-    { cache: "no-store" },
-  );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch filters");
-  }
-
-  const data = await response.json();
-
-  return Array.isArray(data) ? data : data.data;
-}
 
 export default async function ProductsPage() {
-  const [products, filters] = await Promise.all([getProducts(), getFilters()]);
+  const {data}:any = await getProducts()
 
-  console.log({ products });
+  console.log(data.productVariants,"data.productVariants")
 
   return (
-    <ProductListing
-      products={products}
-      filters={filters}
+   <ProductListing
+      products={data.productVariants}
+      filters={[]}
+      isProductVariant={true}
       // onApplyFilters={(filters) => {
       //   console.log("Selected filters:", filters);
       // }}

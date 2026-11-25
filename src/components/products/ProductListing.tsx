@@ -5,6 +5,7 @@ import { Product, ProductFilter } from "@/types/product";
 import ProductCard from "./ProductCard";
 import ProductFilters, { AppliedFilters } from "./ProductFilters";
 import ProductSorting from "./ProductSorting";
+import ProductVariantCard from "./ProductVariantCard";
 
 interface Props {
   products: Product[];
@@ -12,6 +13,7 @@ interface Props {
   onApplyFilters: (filters: AppliedFilters) => void;
   onSortChange?: (sort: string) => void;
   title?: string;
+  isProductVariant?:boolean
 }
 
 export default function ProductListing({
@@ -20,6 +22,7 @@ export default function ProductListing({
   onApplyFilters = (a: any) => null,
   onSortChange = (a: any) => null,
   title = "All Products",
+  isProductVariant=false
 }: Props) {
   const [sort, setSort] = useState("newest");
 
@@ -79,7 +82,7 @@ export default function ProductListing({
             {products.length > 0 ? (
               <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  !isProductVariant?<ProductCard key={product.id} product={product} />:<ProductVariantCard key={product.id} variant={product}/>
                 ))}
               </div>
             ) : (
